@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DreamHome Maas – Baukosten & Budget</title>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background:#f4f6f8; }
+    header { background:#1f2937; color:#fff; padding:20px; text-align:center; }
+    main { padding:20px; max-width:1000px; margin:auto; }
+    .card { background:#fff; padding:20px; border-radius:8px; margin-bottom:20px; }
+    input, select, button { padding:10px; margin:5px 0; width:100%; }
+    button { background:#2563eb; color:#fff; border:none; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { border-bottom:1px solid #ddd; padding:8px; }
+    .right { text-align:right; }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>DreamHome Maas</h1>
+  <p>Baukosten & Budgetübersicht</p>
+</header>
+
+<main>
+
+<div class="card" id="auth">
+  <h2>Login</h2>
+  <input id="email" placeholder="E-Mail">
+  <input id="password" type="password" placeholder="Passwort">
+  <button onclick="login()">Login / Registrieren</button>
+</div>
+
+<div class="card" id="dashboard" style="display:none">
+  <h2>Budgetübersicht</h2>
+  <p><strong>Gesamtbudget:</strong> <span id="budget">0</span> €</p>
+  <p><strong>Ist-Kosten:</strong> <span id="spent">0</span> €</p>
+  <p><strong>Restbudget:</strong> <span id="rest">0</span> €</p>
+</div>
+
+<div class="card" id="costs" style="display:none">
+  <h2>Neue Kosten erfassen</h2>
+  <input id="title" placeholder="Bezeichnung">
+  <input id="amount" type="number" placeholder="Betrag (€)">
+  <select id="category">
+    <option>Grundstück</option>
+    <option>Rohbau</option>
+    <option>Ausbau</option>
+    <option>Haustechnik</option>
+    <option>Außenanlagen</option>
+  </select>
+  <button onclick="addCost()">Speichern</button>
+
+  <table>
+    <thead>
+      <tr><th>Bezeichnung</th><th>Kategorie</th><th class="right">€</th></tr>
+    </thead>
+    <tbody id="costTable"></tbody>
+  </table>
+</div>
+
+</main>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyChZANVbhTA_ZzLyOvygJZL9ikpoGamAyo",
+  authDomain: "dreamhomemaas.firebaseapp.com",
+  projectId: "dreamhomemaas",
+  storageBucket: "dreamhomemaas.firebasestorage.app",
+  messagingSenderId: "683852893002",
+  appId: "1:683852893002:web:afe0b2c12"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let userId = null;
+const PROJECT_ID = "defaultProject";
+
+function login(){
+  const email = email.value;
+  const password = password.value;
+  auth.signInWithEmailAndPassword(email,password)
+  .catch(()=> auth.createUserWithEmailAndPassword(email,password));
+}
+
+auth.onAuthStateChanged(user=>{
+  if(user){
+    userId = user.uid;
+    auth.style.display="none";
+    dashboard.style.display="block";
+    costs.style.display="block";
+    loadCosts();
+  }
+});
+
+function addCost(){
+  db.collection("projects").doc(PROJECT_ID)
+    .collection("costs").add({
+      title: title.value,
+      amount: Number(amount.value),
+      category: category.value,
+      createdAt: new Date()
+    });
+}
+
+function loadCosts(){
+  db.collection("projects").doc(PROJECT_ID)
+    .collection("costs")
+    .onSnapshot(snap=>{
+      let sum=0;
+      costTable.innerHTML="";
+      snap.forEach(doc=>{
+        const c = doc.data();
+        sum += c.amount;
+        costTable.innerHTML += `<tr><td>${c.title}</td><td>${c.category}</td><td class='right'>${c.amount}</td></tr>`;
+      });
+      budget.innerText = 300000;
+      spent.innerText = sum;
+      rest.innerText = 300000 - sum;
+    });
+}
+</script>
+</body>
+</html>
